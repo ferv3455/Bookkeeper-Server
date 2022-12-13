@@ -131,3 +131,6 @@ dmypy.json
 # Wechat config
 appconfig.json
 settings.py
+
+# MySQL
+mysql.json

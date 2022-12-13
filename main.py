@@ -1,14 +1,13 @@
-import io
+from datetime import timedelta
+import json
+
+from flask import Flask, request
+
 import message as msg
 from access import AccessToken
 from resources import upload
+from accounting import lookup, graph, insert
 
-from datetime import timedelta
-
-from matplotlib import pyplot as plt
-from flask import Flask, request
-import json
-# import mysql.connector
 
 app = Flask(__name__)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=10)
@@ -40,27 +39,35 @@ def wechat_message_response():
 
     elif request.method == "POST":
         message = msg.Reply(request)
-
         if message.MsgType != 'event':
             if message.Content:
-                # Text message: display data
-
-                plt.figure()
-                plt.plot([1, 2])
-                plt.title("test")
-
-                # Upload image
-                buf = io.BytesIO()
-                plt.savefig(buf, format='jpg')
-                buf.seek(0)
-                mediaId = upload(token.get(), 'image', buf)
-                buf.close()
-
-                # Reply
-                if mediaId is not None:
-                    message.image(mediaId)
+                content = message.Content.split()
+                if content[0] == "查询":
+                    buf = lookup(content[1:])
+                    buf.seek(0)
+                    mediaId = upload(token.get(), 'image', buf)
+                    buf.close()
+                    if mediaId is not None:
+                        message.image(mediaId)
+                    else:
+                        message.text('系统错误，请稍后再试！')
+                elif content[0] == "绘图":
+                    buf = graph(content[1:])
+                    buf.seek(0)
+                    mediaId = upload(token.get(), 'image', buf)
+                    buf.close()
+                    if mediaId is not None:
+                        message.image(mediaId)
+                    else:
+                        message.text('系统错误，请稍后再试！')
+                elif content[0] == "添加" or content[0] == "插入":
+                    res = insert(content[1:])
+                    if res:
+                        message.text('添加成功')
+                    else:
+                        message.text('系统错误，请稍后再试！')
                 else:
-                    message.text('系统错误，请稍后再试！')
+                    message.text('未知操作：' + message.Content)
 
         else:
             # Subscription event only
